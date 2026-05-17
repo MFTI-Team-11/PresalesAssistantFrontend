@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.idea
+.DS_Store
+vite-server.log
+vite-server.err.log
+next-server.log
+next-server.err.log
+npm-debug.log*
+pnpm-debug.log*
+.git
+.gitignore
