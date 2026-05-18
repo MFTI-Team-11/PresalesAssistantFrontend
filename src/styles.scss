@@ -87,7 +87,7 @@ button {
 }
 
 .auth-route,
-.admin-route {
+.workspace-route {
   min-height: 100vh;
 }
 
@@ -792,19 +792,28 @@ select {
   background: var(--surface-strong);
 }
 
+.form-error {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--red) 35%, var(--line));
+  border-radius: $radius-sm;
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 9%, var(--surface));
+  font-weight: 700;
+}
+
 .auth-submit {
   width: 100%;
   justify-content: center;
   margin-top: 4px;
 }
 
-.admin-shell {
+.workspace-shell {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
 }
 
-.admin-sidebar {
+.workspace-sidebar {
   position: sticky;
   top: 0;
   min-height: 100vh;
@@ -817,7 +826,7 @@ select {
   backdrop-filter: blur(16px);
 }
 
-.admin-logo {
+.workspace-logo {
   display: grid;
   gap: 4px;
   padding: 16px;
@@ -826,23 +835,23 @@ select {
   background: var(--surface-strong);
 }
 
-.admin-logo strong {
+.workspace-logo strong {
   font-size: 22px;
 }
 
-.admin-logo span,
-.admin-header span,
+.workspace-logo span,
+.workspace-header span,
 .answer-panel span,
 .answer-intro p {
   color: var(--muted);
 }
 
-.admin-menu {
+.workspace-menu {
   display: grid;
   gap: 8px;
 }
 
-.admin-menu a,
+.workspace-menu a,
 .logout-button {
   min-height: 44px;
   display: flex;
@@ -857,8 +866,8 @@ select {
   font-weight: 800;
 }
 
-.admin-menu a.active,
-.admin-menu a:hover {
+.workspace-menu a.active,
+.workspace-menu a:hover {
   border-color: var(--line);
   background: var(--surface-strong);
 }
@@ -869,12 +878,12 @@ select {
   background: var(--surface-strong);
 }
 
-.admin-main {
+.workspace-main {
   min-width: 0;
   padding: 28px;
 }
 
-.admin-header {
+.workspace-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -882,7 +891,7 @@ select {
   margin-bottom: 22px;
 }
 
-.admin-header h1 {
+.workspace-header h1 {
   margin-top: 4px;
   font-size: clamp(32px, 5vw, 56px);
 }
@@ -918,6 +927,87 @@ select {
   gap: 16px;
 }
 
+.answer-list {
+  display: grid;
+  gap: 16px;
+}
+
+.answer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.answer-question {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: $radius-md;
+  background: var(--surface-strong);
+}
+
+.answer-question strong {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.answer-question b {
+  color: var(--red);
+}
+
+.answer-file {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--primary) 45%, var(--line));
+  border-radius: $radius-sm;
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+.answer-file span {
+  color: var(--muted);
+}
+
+.answer-file input {
+  min-height: 46px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  line-height: 1.4;
+}
+
+.answer-file input::file-selector-button {
+  min-height: 28px;
+  margin-right: 12px;
+  border: 1px solid var(--line);
+  border-radius: $radius-sm;
+  color: var(--text);
+  background: var(--surface-strong);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.answer-file b {
+  color: var(--primary-strong);
+  font-size: 14px;
+}
+
+.answer-question-meta {
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: $radius-sm;
+  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .answer-grid label {
   display: grid;
   gap: 8px;
@@ -929,7 +1019,8 @@ select {
 
 .answer-grid input,
 .answer-grid select,
-.answer-grid textarea {
+.answer-grid textarea,
+.answer-question input {
   width: 100%;
   min-height: 46px;
   padding: 0 12px;
@@ -945,23 +1036,23 @@ select {
   resize: vertical;
 }
 
-.admin-workspace {
+.workspace-estimate {
   grid-template-columns: 300px minmax(0, 1fr);
 }
 
 @media (max-width: 1100px) {
   .hero,
   .workspace,
-  .admin-shell {
+  .workspace-shell {
     grid-template-columns: 1fr;
   }
 
   .control-panel,
-  .admin-sidebar {
+  .workspace-sidebar {
     position: static;
   }
 
-  .admin-sidebar {
+  .workspace-sidebar {
     min-height: auto;
   }
 
@@ -980,7 +1071,7 @@ select {
   .document,
   .role,
   .table-row,
-  .admin-header,
+  .workspace-header,
   .answer-intro {
     align-items: stretch;
   }
@@ -988,7 +1079,7 @@ select {
   .topbar,
   .document,
   .role,
-  .admin-header,
+  .workspace-header,
   .answer-intro {
     flex-direction: column;
   }
@@ -1041,7 +1132,7 @@ select {
     grid-column: 2;
   }
 
-  .admin-main,
+  .workspace-main,
   .auth-page-shell {
     padding: 16px;
   }
