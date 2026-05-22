@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BarChart3, ClipboardList, FileText, LogOut, ShieldCheck, UsersRound } from 'lucide-react';
-import { useAiApi, type DefaultQuestion } from '@features/ai';
 import { useAuthApi, type AuthUser } from '@features/auth';
+import { type DefaultPresaleQuestion, usePresaleApi } from '@features/presale';
 import { ControlPanel } from './ControlPanel';
 import { DecompositionPanel } from './DecompositionPanel';
 import { MonthlyBudgetPanel } from './MonthlyBudgetPanel';
 import { RisksPanel } from './RisksPanel';
 import { SummaryGrid } from './SummaryGrid';
 import { TeamPanel } from './TeamPanel';
+import { outputOptions } from '@/data';
 import type { Complexity, SupportScheme } from '@/types';
 import { buildMonthlyPlan, calculateTotals, getComplexityFactor } from '@/utils';
 
-const fallbackQuestions: DefaultQuestion[] = [
+const fallbackQuestions: DefaultPresaleQuestion[] = [
   {
     id: 'business_goal',
     text: 'Какая бизнес-цель проекта и какие KPI должны быть достигнуты?',
@@ -164,11 +165,16 @@ const fallbackQuestions: DefaultQuestion[] = [
 export function WorkspacePage() {
   const router = useRouter();
   const authApi = useAuthApi();
-  const aiApi = useAiApi();
+  const presaleApi = usePresaleApi();
   const [isReady, setIsReady] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [presaleId, setPresaleId] = useState('');
+  const [presaleTitle, setPresaleTitle] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [createPresaleError, setCreatePresaleError] = useState('');
+  const [isCreatePresaleSubmitting, setIsCreatePresaleSubmitting] = useState(false);
   const [hasAnswers, setHasAnswers] = useState(false);
-  const [questions, setQuestions] = useState<DefaultQuestion[]>([]);
+  const [questions, setQuestions] = useState<DefaultPresaleQuestion[]>([]);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [questionFiles, setQuestionFiles] = useState<Record<string, File | null>>({});
   const [estimateError, setEstimateError] = useState('');
@@ -182,6 +188,17 @@ export function WorkspacePage() {
   const totals = useMemo(() => calculateTotals(complexityFactor, support), [complexityFactor, support]);
   const monthlyPlan = useMemo(() => buildMonthlyPlan(duration, totals), [duration, totals]);
   const renderedQuestions = questions.length ? questions : fallbackQuestions;
+  const canCreatePresale = Boolean(presaleTitle.trim()) && Boolean(customerName.trim()) && selectedOutputs.length > 0;
+  const isQuestionAnswered = (question: DefaultPresaleQuestion) => {
+    const hasTextAnswer = Boolean(questionAnswers[question.id]?.trim());
+    const hasFileAnswer = Boolean(question.allow_file && questionFiles[question.id]);
+
+    return question.file_required ? hasFileAnswer : hasTextAnswer || hasFileAnswer;
+  };
+  const canGenerateEstimate = useMemo(
+    () => renderedQuestions.every((question) => !question.required || isQuestionAnswered(question)),
+    [questionAnswers, questionFiles, renderedQuestions],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -205,11 +222,11 @@ export function WorkspacePage() {
   }, [authApi, router]);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || !presaleId) return;
 
     let isMounted = true;
 
-    aiApi
+    presaleApi
       .getDefaultQuestions()
       .then((payload) => {
         if (!isMounted) return;
@@ -223,7 +240,7 @@ export function WorkspacePage() {
     return () => {
       isMounted = false;
     };
-  }, [aiApi, isReady]);
+  }, [isReady, presaleApi, presaleId]);
 
   const logout = async () => {
     try {
@@ -254,7 +271,29 @@ export function WorkspacePage() {
     }));
   };
 
+  const createPresale = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreatePresaleError('');
+    setIsCreatePresaleSubmitting(true);
+
+    try {
+      const presale = await presaleApi.createPresale({
+        title: presaleTitle.trim(),
+        customer_name: customerName.trim(),
+        desired_outputs: selectedOutputs,
+      });
+
+      setPresaleId(presale.id);
+    } catch {
+      setCreatePresaleError('Не удалось создать пресейл. Проверьте данные и авторизацию.');
+    } finally {
+      setIsCreatePresaleSubmitting(false);
+    }
+  };
+
   const generateEstimate = async () => {
+    if (!presaleId) return;
+
     setEstimateError('');
     setIsEstimateSubmitting(true);
 
@@ -262,7 +301,8 @@ export function WorkspacePage() {
       const answers = renderedQuestions.map((question) => questionAnswers[question.id] || '');
       const files = Object.values(questionFiles).filter((file): file is File => Boolean(file));
 
-      await aiApi.generatePresaleEstimate({
+      await presaleApi.generateEstimate({
+        presaleId,
         answers,
         files,
       });
@@ -307,6 +347,10 @@ export function WorkspacePage() {
               <ShieldCheck size={18} />
               On-prem
             </a>
+            <Link href="/history">
+              <FileText size={18} />
+              История
+            </Link>
           </nav>
           <button className="logout-button" type="button" onClick={logout}>
             <LogOut size={18} />
@@ -318,11 +362,57 @@ export function WorkspacePage() {
           <header className="workspace-header">
             <div>
               <span>Единый кабинет</span>
-              <h1>{hasAnswers ? 'Рабочая панель пресейла' : 'Ответьте на вопросы проекта'}</h1>
+              <h1>{hasAnswers ? 'Рабочая панель пресейла' : presaleId ? 'Ответьте на вопросы проекта' : 'Создайте пресейл'}</h1>
             </div>
           </header>
 
-          {!hasAnswers ? (
+          {!presaleId ? (
+            <section className="answer-panel" id="request">
+              <div className="answer-intro">
+                <ClipboardList size={28} />
+                <div>
+                  <h2>Новый пресейл</h2>
+                  <p>Сначала создайте карточку пресейла, затем заполните вопросы и сформируйте оценку по ее id.</p>
+                </div>
+              </div>
+              <form className="answer-grid" onSubmit={createPresale}>
+                <label>
+                  <span>Название пресейла</span>
+                  <input
+                    placeholder="Тестовый пресейл AI-ассистента"
+                    value={presaleTitle}
+                    onChange={(event) => setPresaleTitle(event.target.value)}
+                    required
+                  />
+                </label>
+                <label>
+                  <span>Заказчик</span>
+                  <input
+                    placeholder="Тестовый заказчик"
+                    value={customerName}
+                    onChange={(event) => setCustomerName(event.target.value)}
+                    required
+                  />
+                </label>
+                <div className="answer-output-field">
+                  <span>Что нужно получить</span>
+                  <div className="chips">
+                    {outputOptions.map((item) => (
+                      <button className={selectedOutputs.includes(item) ? 'chip selected' : 'chip'} key={item} type="button" onClick={() => toggleOutput(item)}>
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {createPresaleError && <p className="form-error">{createPresaleError}</p>}
+                <div className="answer-actions">
+                  <button className="primary-button" type="submit" disabled={isCreatePresaleSubmitting || !canCreatePresale}>
+                    {isCreatePresaleSubmitting ? 'Создаем...' : 'Создать пресейл'}
+                  </button>
+                </div>
+              </form>
+            </section>
+          ) : !hasAnswers ? (
             <section className="answer-panel" id="request">
               <div className="answer-intro">
                 <FileText size={28} />
@@ -333,14 +423,15 @@ export function WorkspacePage() {
               </div>
               <div className="answer-list">
                 {renderedQuestions.map((question) => (
-                  <label className="answer-question" key={question.id}>
+                  <div className="answer-question" key={question.id}>
                     <span className="answer-question-meta">{question.category}</span>
-                    <strong>
+                    <label htmlFor={`answer-${question.id}`}>
                       {question.text}
                       {question.required && <b>*</b>}
-                    </strong>
+                    </label>
                     <input
-                      required={question.required}
+                      id={`answer-${question.id}`}
+                      required={question.required && !questionFiles[question.id]}
                       placeholder={question.placeholder}
                       value={questionAnswers[question.id] || ''}
                       onChange={(event) => updateQuestionAnswer(question.id, event.target.value)}
@@ -349,19 +440,24 @@ export function WorkspacePage() {
                       <div className="answer-file">
                         {question.file_hint && <span>{question.file_hint}</span>}
                         <input
+                          id={`file-${question.id}`}
+                          className="answer-file-native"
                           type="file"
                           required={question.file_required}
                           onChange={(event) => updateQuestionFile(question.id, event.target.files?.[0] || null)}
                         />
-                        {questionFiles[question.id] && <b>{questionFiles[question.id]?.name}</b>}
+                        <label className="answer-file-control" htmlFor={`file-${question.id}`}>
+                          <span>Выберите файл</span>
+                          <b>{questionFiles[question.id]?.name || 'Файл не выбран'}</b>
+                        </label>
                       </div>
                     )}
-                  </label>
+                  </div>
                 ))}
               </div>
               {estimateError && <p className="form-error">{estimateError}</p>}
               <div className="answer-actions">
-                <button className="primary-button" type="button" disabled={isEstimateSubmitting} onClick={generateEstimate}>
+                <button className="primary-button" type="button" disabled={isEstimateSubmitting || !canGenerateEstimate} onClick={generateEstimate}>
                   {isEstimateSubmitting ? 'Формируем...' : 'Сформировать оценку'}
                 </button>
               </div>
