@@ -63,6 +63,32 @@ function formatNumber(value: unknown) {
   return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(asNumber(value));
 }
 
+function formatPlainNumber(value: unknown, fallback = '0') {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value;
+  }
+
+  return fallback;
+}
+
+function formatTeamRole(value: unknown) {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  const role = asRecord(value);
+  const name = asString(role.role, 'Роль');
+  const grade = asString(role.grade);
+  const rate = asNumber(role.hourly_rate);
+  const details = [grade, rate ? `${formatMoney(rate)}/ч` : ''].filter(Boolean).join(' · ');
+
+  return details ? `${name} · ${details}` : name;
+}
+
 function formatBytes(value: unknown) {
   const bytes = asNumber(value);
   if (!bytes) return 'Размер не указан';
@@ -136,11 +162,6 @@ function getMonthlyExpenses(details: PresaleDetailsPayload | null) {
   return asArray(payload.monthly_expenses);
 }
 
-function getExtractedRates(details: PresaleDetailsPayload | null) {
-  const payload = asRecord(asRecord(details?.analysis).payload);
-  return asArray(payload.extracted_rates);
-}
-
 export function PresaleChatPage({ presaleId }: PresaleChatPageProps) {
   const router = useRouter();
   const authApi = useAuthApi();
@@ -163,7 +184,6 @@ export function PresaleChatPage({ presaleId }: PresaleChatPageProps) {
   const supportBudget = useMemo(() => getSupportBudget(details), [details]);
   const warrantyBudget = useMemo(() => getWarrantyBudget(details), [details]);
   const monthlyExpenses = useMemo(() => getMonthlyExpenses(details), [details]);
-  const extractedRates = useMemo(() => getExtractedRates(details), [details]);
   const functionalRequirements = asArray(analysis.functional_requirements);
   const nonfunctionalRequirements = asArray(analysis.nonfunctional_requirements);
   const tasks = asArray(analysis.tasks);
@@ -507,12 +527,19 @@ export function PresaleChatPage({ presaleId }: PresaleChatPageProps) {
 
                 <article className="analysis-card">
                   <h3><UsersRound size={18} /> Команда</h3>
-                  <div className="compact-list">
+                  <div className="team-option-list">
                     {teamOptions.map((team, index) => (
-                      <p key={`${asString(team.name)}-${index}`}>
-                        <b>{asString(team.duration_months, '0')} мес.</b>
-                        {asString(team.name, 'Команда')}
-                      </p>
+                      <div className="team-option" key={`${asString(team.name)}-${index}`}>
+                        <div>
+                          <strong>{asString(team.name, 'Команда')}</strong>
+                          <span>{formatPlainNumber(team.duration_months)} мес.</span>
+                        </div>
+                        <div className="team-role-tags">
+                          {asArray(team.roles).map((role, roleIndex) => (
+                            <b key={`${formatTeamRole(role)}-${roleIndex}`}>{formatTeamRole(role)}</b>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </article>
@@ -524,18 +551,6 @@ export function PresaleChatPage({ presaleId }: PresaleChatPageProps) {
                       <p key={`${asString(month.month)}-${index}`}>
                         <b>Месяц {formatNumber(month.month)}</b>
                         {formatMoney(month.total)}
-                      </p>
-                    ))}
-                  </div>
-                </article>
-
-                <article className="analysis-card">
-                  <h3>Ставки</h3>
-                  <div className="compact-list">
-                    {extractedRates.map((rate, index) => (
-                      <p key={`${asString(rate.role)}-${index}`}>
-                        <b>{asString(rate.role, 'Роль')}</b>
-                        {asString(rate.grade, 'grade')} · {formatMoney(rate.hourly_rate)}/ч
                       </p>
                     ))}
                   </div>

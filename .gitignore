@@ -21,3 +21,4 @@ next-server.log
 next-server.err.log
 vite-server.log
 vite-server.err.log
+*.tsbuildinfo

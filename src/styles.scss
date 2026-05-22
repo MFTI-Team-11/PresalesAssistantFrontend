@@ -678,7 +678,7 @@ select {
   margin: 0 auto;
   padding: 28px;
   display: grid;
-  align-content: center;
+  grid-template-rows: auto 1fr;
   gap: 22px;
 }
 
@@ -695,6 +695,7 @@ select {
 .auth-card {
   width: min(520px, 100%);
   margin: 0 auto;
+  align-self: center;
   padding: 28px;
   border: 1px solid var(--line);
   border-radius: $radius-lg;
@@ -814,21 +815,61 @@ select {
 
 .workspace-shell {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  display: block;
 }
 
 .workspace-sidebar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  z-index: 70;
+  width: 280px;
   min-height: 100vh;
   padding: 22px;
   display: flex;
   flex-direction: column;
   gap: 24px;
   border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 90%, transparent);
   backdrop-filter: blur(16px);
+  transform: translateX(100%);
+  transition: transform $transition-fast;
+}
+
+.workspace-sidebar.open {
+  transform: translateX(0);
+}
+
+.workspace-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: 0;
+  background: var(--overlay);
+}
+
+.workspace-menu-toggle,
+.sidebar-close {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: $radius-sm;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.workspace-menu-toggle {
+  width: 44px;
+  height: 44px;
+}
+
+.sidebar-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
 }
 
 .workspace-logo {
@@ -857,6 +898,7 @@ select {
 }
 
 .workspace-menu a,
+.workspace-menu button,
 .logout-button {
   min-height: 44px;
   display: flex;
@@ -872,7 +914,9 @@ select {
 }
 
 .workspace-menu a.active,
-.workspace-menu a:hover {
+.workspace-menu button.active,
+.workspace-menu a:hover,
+.workspace-menu button:hover {
   border-color: var(--line);
   background: var(--surface-strong);
 }
@@ -899,6 +943,17 @@ select {
 .workspace-header h1 {
   margin-top: 4px;
   font-size: clamp(32px, 5vw, 56px);
+}
+
+.workspace-new-button {
+  flex: 0 0 auto;
+}
+
+.workspace-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .answer-panel {
@@ -1089,6 +1144,7 @@ select {
 
 .history-header {
   margin-bottom: 22px;
+  justify-content: flex-start;
 }
 
 .history-header span,
@@ -1103,8 +1159,14 @@ select {
 }
 
 .history-header h1 {
-  margin-top: 4px;
-  font-size: clamp(34px, 6vw, 60px);
+  font-size: clamp(34px, 5vw, 54px);
+}
+
+.history-back-button {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .history-panel,
@@ -1138,7 +1200,7 @@ select {
 .history-item {
   min-height: 88px;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(180px, auto);
   gap: 14px;
   align-items: center;
   padding: 16px;
@@ -1164,6 +1226,18 @@ select {
   display: block;
 }
 
+.history-item-body {
+  min-width: 0;
+}
+
+.history-item-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
 .history-item p {
   margin-top: 6px;
   overflow: hidden;
@@ -1172,10 +1246,44 @@ select {
 }
 
 .history-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
   color: var(--muted);
+  text-align: right;
+  font-size: 14px;
+}
+
+.history-status {
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 34%, var(--line));
+  border-radius: $radius-sm;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 9%, var(--surface));
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.history-status.ready {
+  border-color: color-mix(in srgb, var(--green) 34%, var(--line));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
+}
+
+.history-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.history-tags b {
+  padding: 4px 7px;
+  border-radius: $radius-sm;
+  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  font-size: 12px;
 }
 
 .history-empty {
@@ -1286,6 +1394,7 @@ select {
 
 .chat-message.user {
   align-self: flex-end;
+  grid-template-columns: minmax(0, 1fr) 34px;
 }
 
 .chat-message.assistant {
@@ -1304,6 +1413,13 @@ select {
 
 .chat-message.user .chat-message-icon {
   background: var(--green);
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.chat-message.user p {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .chat-message p {
@@ -1570,6 +1686,7 @@ select {
 }
 
 .compact-list,
+.team-option-list,
 .task-list,
 .risk-detail-list,
 .sizing-list {
@@ -1590,6 +1707,41 @@ select {
 
 .compact-list b {
   color: var(--primary-strong);
+}
+
+.team-option {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: $radius-sm;
+  background: var(--surface);
+}
+
+.team-option > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-option span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.team-role-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.team-role-tags b {
+  padding: 5px 7px;
+  border-radius: $radius-sm;
+  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  font-size: 12px;
 }
 
 .task-list div,
@@ -1622,13 +1774,8 @@ select {
   }
 
   .control-panel,
-  .workspace-sidebar,
   .chat-sidebar {
     position: static;
-  }
-
-  .workspace-sidebar {
-    min-height: auto;
   }
 
   .summary-grid,
@@ -1736,7 +1883,8 @@ select {
   }
 
   .history-item-meta {
-    justify-content: space-between;
+    justify-items: start;
+    text-align: left;
   }
 
   .presale-detail-shell {

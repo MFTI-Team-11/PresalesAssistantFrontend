@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, ClipboardList, FileText, LogOut, ShieldCheck, UsersRound } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FilePlus2, FileText, LogOut, Menu, X } from 'lucide-react';
 import { useAuthApi, type AuthUser } from '@features/auth';
 import { type DefaultPresaleQuestion, usePresaleApi } from '@features/presale';
 import { ControlPanel } from './ControlPanel';
@@ -164,9 +164,11 @@ const fallbackQuestions: DefaultPresaleQuestion[] = [
 
 export function WorkspacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const authApi = useAuthApi();
   const presaleApi = usePresaleApi();
   const [isReady, setIsReady] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [presaleId, setPresaleId] = useState('');
   const [presaleTitle, setPresaleTitle] = useState('');
@@ -199,6 +201,7 @@ export function WorkspacePage() {
     () => renderedQuestions.every((question) => !question.required || isQuestionAnswered(question)),
     [questionAnswers, questionFiles, renderedQuestions],
   );
+  const draftPresaleId = searchParams.get('presaleId') || '';
 
   useEffect(() => {
     let isMounted = true;
@@ -230,7 +233,8 @@ export function WorkspacePage() {
       .getDefaultQuestions()
       .then((payload) => {
         if (!isMounted) return;
-        setQuestions(payload.questions);
+        const questionItems = Array.isArray(payload) ? payload : payload?.questions;
+        setQuestions(Array.isArray(questionItems) ? questionItems : fallbackQuestions);
       })
       .catch(() => {
         if (!isMounted) return;
@@ -241,6 +245,18 @@ export function WorkspacePage() {
       isMounted = false;
     };
   }, [isReady, presaleApi, presaleId]);
+
+  useEffect(() => {
+    if (!isReady || !draftPresaleId || presaleId === draftPresaleId) return;
+
+    setPresaleId(draftPresaleId);
+    setHasAnswers(false);
+    setQuestions([]);
+    setQuestionAnswers({});
+    setQuestionFiles({});
+    setEstimateError('');
+    setCreatePresaleError('');
+  }, [draftPresaleId, isReady, presaleId]);
 
   const logout = async () => {
     try {
@@ -269,6 +285,23 @@ export function WorkspacePage() {
       ...current,
       [questionId]: file,
     }));
+  };
+
+  const startNewPresale = () => {
+    if (draftPresaleId) {
+      router.replace('/workspace');
+    }
+
+    setPresaleId('');
+    setPresaleTitle('');
+    setCustomerName('');
+    setCreatePresaleError('');
+    setHasAnswers(false);
+    setQuestions([]);
+    setQuestionAnswers({});
+    setQuestionFiles({});
+    setEstimateError('');
+    setIsSidebarOpen(false);
   };
 
   const createPresale = async (event: FormEvent<HTMLFormElement>) => {
@@ -306,7 +339,7 @@ export function WorkspacePage() {
         answers,
         files,
       });
-      setHasAnswers(true);
+      router.push(`/history/${presaleId}`);
     } catch {
       setEstimateError('Не удалось сформировать оценку. Проверьте ответы, файлы и доступность AI-сервиса.');
     } finally {
@@ -321,8 +354,12 @@ export function WorkspacePage() {
   return (
     <main className="app workspace-route" data-theme="light">
       <section className="workspace-shell">
-        <aside className="workspace-sidebar">
-          <Link className="back-link" href="/">
+        {isSidebarOpen && <button className="workspace-sidebar-backdrop" type="button" aria-label="Закрыть меню" onClick={() => setIsSidebarOpen(false)} />}
+        <aside className={isSidebarOpen ? 'workspace-sidebar open' : 'workspace-sidebar'}>
+          <button className="sidebar-close" type="button" aria-label="Закрыть меню" onClick={() => setIsSidebarOpen(false)}>
+            <X size={20} />
+          </button>
+          <Link className="back-link" href="/" onClick={() => setIsSidebarOpen(false)}>
             <ArrowLeft size={18} />
             Главная
           </Link>
@@ -331,23 +368,11 @@ export function WorkspacePage() {
             <span>{user?.full_name || user?.email || 'Рабочее пространство'}</span>
           </div>
           <nav className="workspace-menu" aria-label="Рабочее пространство">
-            <a className="active" href="#request">
+            <button className="active" type="button" onClick={startNewPresale}>
               <ClipboardList size={18} />
               Новый пресейл
-            </a>
-            <a href="#estimate">
-              <BarChart3 size={18} />
-              Оценка
-            </a>
-            <a href="#team">
-              <UsersRound size={18} />
-              Команда
-            </a>
-            <a href="#security">
-              <ShieldCheck size={18} />
-              On-prem
-            </a>
-            <Link href="/history">
+            </button>
+            <Link href="/history" onClick={() => setIsSidebarOpen(false)}>
               <FileText size={18} />
               История
             </Link>
@@ -361,8 +386,15 @@ export function WorkspacePage() {
         <section className="workspace-main">
           <header className="workspace-header">
             <div>
-              <span>Единый кабинет</span>
               <h1>{hasAnswers ? 'Рабочая панель пресейла' : presaleId ? 'Ответьте на вопросы проекта' : 'Создайте пресейл'}</h1>
+            </div>
+            <div className="workspace-header-actions">
+              <button className="icon-button workspace-new-button" type="button" title="Новый пресейл" aria-label="Новый пресейл" onClick={startNewPresale}>
+                <FilePlus2 size={21} />
+              </button>
+              <button className="icon-button workspace-menu-toggle" type="button" title="Меню" aria-label="Открыть меню" onClick={() => setIsSidebarOpen(true)}>
+                <Menu size={22} />
+              </button>
             </div>
           </header>
 
